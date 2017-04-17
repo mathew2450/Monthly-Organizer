@@ -35,7 +35,6 @@ import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.layout.BorderPane;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
@@ -46,12 +45,12 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.StageStyle;
-import static monthly.organizer.Client.behaviors;
+import java.util.Random;
 
 
 public class MonthlyOrganizer extends Application {
 	static File selectedFolder;
-        private Client client;
+        private ArrayList<Client> clients = new ArrayList<>();
         int clientNum = -1;
 	Workbook wb;
 	Workbook wbo;
@@ -78,7 +77,7 @@ public class MonthlyOrganizer extends Application {
                                     if(null == selectedFolder)
                                                 folderLoc.setText("No Folder Selected");
                                             else
-                                                folderLoc.setText(outputFile.getName());
+                                                folderLoc.setText(selectedFolder.getName());
                                 }
                                 
                         });
@@ -106,196 +105,213 @@ public class MonthlyOrganizer extends Application {
                         merge.setOnAction(new EventHandler<ActionEvent>(){
                                     @Override
                                     public void handle(ActionEvent arg0){ 
-                                        BeaconController bc = new BeaconController();
-                                            try {
-                                                outputStream = new FileOutputStream(outputFile);
-                                            } catch (FileNotFoundException e2) {
-                                                // TODO Auto-generated catch block
-                                                e2.printStackTrace();
-                                            }
-                                            
-                                            try(
+                                        try {
+                                            outputStream = new FileOutputStream(outputFile);
+                                        } catch (FileNotFoundException e2) {
+                                            // TODO Auto-generated catch block
+                                            e2.printStackTrace();
+                                        }
+                                        try(
+                                                
+                                                Stream<Path> paths = Files.walk(Paths.get(selectedFolder.getPath()))) {
+                                            paths.forEach(filePath -> {
+                                                if (Files.isRegularFile(filePath) && !filePath.toString().equals(selectedFolder.toPath().toString())) {
+                                                    //System.out.println(filePath);
+                                                    fileNum++;
+                                                    FileInputStream inputStream;
                                                     
-                                                    Stream<Path> paths = Files.walk(Paths.get(selectedFolder.getPath()))) {
-                                                paths.forEach(filePath -> {
-                                                    if (Files.isRegularFile(filePath) && !filePath.toString().equals(selectedFolder.toPath().toString())) {
-                                                        System.out.println(filePath);
-                                                        fileNum++;
-                                                        FileInputStream inputStream;
+                                                    try {
+                                                        inputStream = new FileInputStream(filePath.toString());
                                                         
-                                                        try {
-                                                            inputStream = new FileInputStream(filePath.toString());
-                                                            
-                                                            wb = new XSSFWorkbook(inputStream);
-                                                            
-                                                            CreationHelper createHelper = wbo.getCreationHelper();
-                                                            Sheet sheetOut = wbo.createSheet(filePath.getFileName().toString());
-                                                            //add client name to beacon controller
-                                                            client = (new Client(filePath.getFileName().toString()));
-                                                            bc.addClient(client);
-                                                            clientNum ++;
-                                                            Row rowOut = sheetOut.createRow(0);
-                                                            Cell cellOut;
-                                                            cellOut = rowOut.createCell(0);
-                                                            cellOut.setCellValue(createHelper.createRichTextString("Week"));
-                                                            cellOut = rowOut.createCell(1);
-                                                            cellOut.setCellValue(createHelper.createRichTextString("Behavior/Decel"));
-                                                            cellOut = rowOut.createCell(2);
-                                                            cellOut.setCellValue(createHelper.createRichTextString("Data Input Total"));
-                                                            cellOut = rowOut.createCell(3);
-                                                            cellOut.setCellValue(createHelper.createRichTextString("Measurment Type"));
-                                                            cellOut = rowOut.createCell(4);
-                                                            cellOut.setCellValue(createHelper.createRichTextString("Measurment Unit"));
-                                                            cellOut = rowOut.createCell(5);
-                                                            cellOut.setCellValue(createHelper.createRichTextString("Total Time for Week (Mins)"));
-                                                            int rowCount = 1;
-                                                            for (int k = 0; k < wb.getNumberOfSheets(); k++) {
-                                                                Sheet sheet = wb.getSheetAt(k);
-                                                                double weekTotal = 0;
-                                                                double timeTotal = 0;
-                                                                boolean replace = false;
-                                                                String decelName = null;
-                                                                String replaceName = null;
-                                                                String measType = null;
-                                                                String measUnit = null;
-                                                                String replacedName = null;
-                                                                String replacedNameOld = null;
-                                                                LocalDateTime date = null;
-                                                                int weekNum = -1;
-                                                                int lastWeek = -1;
-                                                                int year = 0;
-                                                                int rows = sheet.getPhysicalNumberOfRows();
-                                                                //System.out.println("Sheet " + k + " \"" + wb.getSheetName(k) + "\" has " + rows
-                                                                //+ " row(s).");
-                                                                for (int r = 0; r < rows; r++) {
-                                                                    
-                                                                    Row row = sheet.getRow(r);
-                                                                    if (row == null) {
-                                                                        continue;
-                                                                    }
-                                                                    
-                                                                    int cells = row.getPhysicalNumberOfCells();
-                                                                    //System.out.println("\nROW " + row.getRowNum() + " has " + cells
-                                                                    //+ " cell(s).");
-                                                                    for (int c = 0; c < cells; c++) {
-                                                                        Cell cell = row.getCell(c);
-                                                                        if(cell == null)
-                                                                        {
-                                                                            //c++;
-                                                                            cells++;
-                                                                        }
-                                                                        else{
-                                                                            switch (cell.getCellTypeEnum()) {
-                                                                                case STRING:
-                                                                                    if(r == 0 && cell.getRichStringCellValue().getString().contains("Replacement"))
-                                                                                        replace = true;
-                                                                                    if(r == 0 && replace == true && c == 1)
-                                                                                        replaceName = cell.getRichStringCellValue().getString();
-                                                                                    else if(r == 0 && replace == false && c == 1)
-                                                                                        decelName = cell.getRichStringCellValue().getString();
-                                                                                    else if(r == 0 && replace == true && c == 2)
-                                                                                        replacedName = cell.getRichStringCellValue().getString();
-                                                                                    if(r == 1 && c == 0)
-                                                                                        measType = cell.getRichStringCellValue().getString();
-                                                                                    if(r == 1 && c == 1)
-                                                                                        measUnit = cell.getRichStringCellValue().getString();
-                                                                                    //System.out.println(cell.getRichStringCellValue().getString());
-                                                                                    break;
-                                                                                case NUMERIC:
-                                                                                    if (DateUtil.isCellDateFormatted(cell)) {
-                                                                                        date = cell.getDateCellValue().toInstant().atZone(ZoneId.systemDefault()).toLocalDate().atTime(LocalTime.NOON);
-                                                                                        year = date.getYear();
-                                                                                        weekNum = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
-                                                                                        if(lastWeek == -1)
-                                                                                            lastWeek = weekNum;
-                                                                                        c++;
-                                                                                        cell = row.getCell(c);
-                                                                                        weekTotal += cell.getNumericCellValue();
-                                                                                        c++;
-                                                                                        cell = row.getCell(c);
-                                                                                        timeTotal += cell.getNumericCellValue();
-                                                                                    } else {
-                                                                                        System.out.println(cell.getNumericCellValue());
-                                                                                        
-                                                                                    }
-                                                                                    break;
-                                                                                case BOOLEAN:
-                                                                                    //System.out.println(cell.getBooleanCellValue());
-                                                                                    break;
-                                                                                case FORMULA:
-                                                                                    //System.out.println(cell.getCellFormula());
-                                                                                    break;
-                                                                                case BLANK:
-                                                                                    //System.out.println();
-                                                                                    break;
-                                                                                default:
-                                                                                    //System.out.println();
-                                                                            }
-                                                                            
-                                                                            //System.out.println("CELL col=" + cell.getColumnIndex() + " VALUE="
-                                                                            //+ value);
-                                                                        }
-                                                                    }//System.out.println(lastWeek + " " + weekNum + " " + weekTotal);
-                                                                    if(lastWeek != weekNum && lastWeek != -1)
-                                                                    {
-                                                                        
-                                                                        //weekCount ++;
-                                                                        rowOut	= sheetOut.createRow(rowCount);
-                                                                        Cell cell = rowOut.createCell(0);
-                                                                        cell.setCellValue(createHelper.createRichTextString(date.getMonth() + ", Week " + weekNum + " of Year: " + date.getYear()));
-
-                                                                        cell = rowOut.createCell(1);
-                                                                        if(replace == true){
-                                                                             cell.setCellValue(createHelper.createRichTextString(replaceName));
-                                                                             client.addValue(weekNum, weekTotal, Arrays.binarySearch(Client.behaviors, replaceName));
-                                                                             
-                                                                        }
-                                                                           
-                                                                        else
-                                                                            cell.setCellValue(createHelper.createRichTextString(decelName));
-                                                                        cell = rowOut.createCell(2);
-                                                                        cell.setCellValue(weekTotal);
-                                                                        cell = rowOut.createCell(3);
-                                                                        cell.setCellValue(createHelper.createRichTextString(measType));
-                                                                        cell = rowOut.createCell(4);
-                                                                        cell.setCellValue(createHelper.createRichTextString(measUnit));
-                                                                        //System.out.println(months[wR[weekNum].month-1] + " week " + (wR[weekNum].monthWeek) + ", " + (year+1900) + ": " + weekTotal + " Measurment Type: " + measType + " Measument Unit: " + measUnit);
-                                                                        weekTotal = 0;
-                                                                        lastWeek = weekNum;
-                                                                        //newWeek = false;
-                                                                        rowCount++;
-                                                                    }
-                                                                    
+                                                        wb = new XSSFWorkbook(inputStream);
+                                                        
+                                                        CreationHelper createHelper = wbo.getCreationHelper();
+                                                        Sheet sheetOut = wbo.createSheet(filePath.getFileName().toString());
+                                                        //add client name to beacon controller
+                                                        clients.add(new Client(filePath.getFileName().toString()));
+                                                        clientNum++;
+                                                        //System.out.println(clientNum + "");
+                                                        Row rowOut = sheetOut.createRow(0);
+                                                        Cell cellOut;
+                                                        cellOut = rowOut.createCell(0);
+                                                        cellOut.setCellValue(createHelper.createRichTextString("Week"));
+                                                        cellOut = rowOut.createCell(1);
+                                                        cellOut.setCellValue(createHelper.createRichTextString("Behavior/Decel"));
+                                                        cellOut = rowOut.createCell(2);
+                                                        cellOut.setCellValue(createHelper.createRichTextString("Data Input Total"));
+                                                        cellOut = rowOut.createCell(3);
+                                                        cellOut.setCellValue(createHelper.createRichTextString("Measurment Type"));
+                                                        cellOut = rowOut.createCell(4);
+                                                        cellOut.setCellValue(createHelper.createRichTextString("Measurment Unit"));
+                                                        cellOut = rowOut.createCell(5);
+                                                        cellOut.setCellValue(createHelper.createRichTextString("Total Time for Week (Mins)"));
+                                                        int rowCount = 1;
+                                                        for (int k = 0; k < wb.getNumberOfSheets(); k++) {
+                                                            Sheet sheet = wb.getSheetAt(k);
+                                                            double weekTotal = 0;
+                                                            double timeTotal = 0;
+                                                            boolean replace = false;
+                                                            String decelName = null;
+                                                            String replaceName = null;
+                                                            Random rand = null;
+                                                            int  n = 0;
+                                                            String measType = null;
+                                                            String measUnit = null;
+                                                            String replacedName = null;
+                                                            String replacedNameOld = null;
+                                                            LocalDateTime date = null;
+                                                            int weekNum = -1;
+                                                            int lastWeek = -1;
+                                                            int year = 0;
+                                                            int rows = sheet.getPhysicalNumberOfRows();
+                                                            //System.out.println("Sheet " + k + " \"" + wb.getSheetName(k) + "\" has " + rows
+                                                            //+ " row(s).");
+                                                            for (int r = 0; r < rows; r++) {
+                                                                
+                                                                Row row = sheet.getRow(r);
+                                                                if (row == null) {
+                                                                    continue;
                                                                 }
-                                                                //if(replace == true)
-                                                                //System.out.println(replaceName + " for " + replacedName);
-                                                                //else
-                                                                //System.out.println(decelName);
+                                                                
+                                                                int cells = row.getPhysicalNumberOfCells();
+                                                                //System.out.println("\nROW " + row.getRowNum() + " has " + cells
+                                                                //+ " cell(s).");
+                                                                for (int c = 0; c < cells; c++) {
+                                                                    Cell cell = row.getCell(c);
+                                                                    if(cell == null)
+                                                                    {
+                                                                        //c++;
+                                                                        cells++;
+                                                                    }
+                                                                    else{
+                                                                        switch (cell.getCellTypeEnum()) {
+                                                                            case STRING:
+                                                                                if(r == 0 && cell.getRichStringCellValue().getString().contains("Replacement"))
+                                                                                    replace = true;
+                                                                                if(r == 0 && replace == true && c == 1){
+                                                                                    replaceName = cell.getRichStringCellValue().getString();
+                                                                                    rand = new Random();
+                                                                                    n = rand.nextInt(20) + 1;
+                                                                                }
+                                                                                else if(r == 0 && replace == false && c == 1)
+                                                                                    decelName = cell.getRichStringCellValue().getString();
+                                                                                else if(r == 0 && replace == true && c == 2)
+                                                                                    replacedName = cell.getRichStringCellValue().getString();
+                                                                                if(r == 1 && c == 0)
+                                                                                    measType = cell.getRichStringCellValue().getString();
+                                                                                if(r == 1 && c == 1)
+                                                                                    measUnit = cell.getRichStringCellValue().getString();
+                                                                                //System.out.println(cell.getRichStringCellValue().getString());
+                                                                                break;
+                                                                            case NUMERIC:
+                                                                                if (DateUtil.isCellDateFormatted(cell)) {
+                                                                                    date = cell.getDateCellValue().toInstant().atZone(ZoneId.systemDefault()).toLocalDate().atTime(LocalTime.NOON);
+                                                                                    year = date.getYear();
+                                                                                    weekNum = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+                                                                                    if(lastWeek == -1)
+                                                                                        lastWeek = weekNum;
+                                                                                    c++;
+                                                                                    cell = row.getCell(c);
+                                                                                    weekTotal += cell.getNumericCellValue();
+                                                                                    c++;
+                                                                                    //cell = row.getCell(c);
+                                                                                    //timeTotal += cell.getNumericCellValue();
+                                                                                } else {
+                                                                                    System.out.println(cell.getNumericCellValue());
+                                                                                    
+                                                                                }
+                                                                                break;
+                                                                            case BOOLEAN:
+                                                                                //System.out.println(cell.getBooleanCellValue());
+                                                                                break;
+                                                                            case FORMULA:
+                                                                                //System.out.println(cell.getCellFormula());
+                                                                                break;
+                                                                            case BLANK:
+                                                                                //System.out.println();
+                                                                                break;
+                                                                            default:
+                                                                                //System.out.println();
+                                                                        }
+                                                                        
+                                                                        //System.out.println("CELL col=" + cell.getColumnIndex() + " VALUE="
+                                                                        //+ value);
+                                                                    }
+                                                                }//System.out.println(lastWeek + " " + weekNum + " " + weekTotal);
+                                                                if(lastWeek != weekNum && lastWeek != -1)
+                                                                {
+                                                                    
+                                                                    //weekCount ++;
+                                                                    rowOut	= sheetOut.createRow(rowCount);
+                                                                    Cell cell = rowOut.createCell(0);
+                                                                    cell.setCellValue(createHelper.createRichTextString(date.getMonth() + ", Week " + weekNum + " of Year: " + date.getYear()));
+                                                                    
+                                                                    //create random number to choose behavior
+                                                                    
+                                                                    
+                                                                    cell = rowOut.createCell(1);
+                                                                    if(replace == true){
+                                                                        cell.setCellValue(createHelper.createRichTextString(replaceName));
+                                                                        //client.addValue((((date.getYear() - 2014)*53) + weekNum), weekTotal, Arrays.binarySearch(Client.behaviors, replaceName));
+                                                                        
+                                                                        //addvalue to random behavior chosen for the week
+                                                                        clients.get(clientNum).addValue((((date.getYear() - 2014)*53) + weekNum), weekTotal, n);
+                                                                        //System.out.println((((date.getYear() - 2014)*53) + weekNum) + " " + weekTotal + " " + Client.behaviors[n] + " " + clients.get(clientNum).getName());
+                                                                    }
+                                                                    
+                                                                    else
+                                                                        cell.setCellValue(createHelper.createRichTextString(decelName));
+                                                                    cell = rowOut.createCell(2);
+                                                                    cell.setCellValue(weekTotal);
+                                                                    cell = rowOut.createCell(3);
+                                                                    cell.setCellValue(createHelper.createRichTextString(measType));
+                                                                    cell = rowOut.createCell(4);
+                                                                    cell.setCellValue(createHelper.createRichTextString(measUnit));
+                                                                    //System.out.println(months[wR[weekNum].month-1] + " week " + (wR[weekNum].monthWeek) + ", " + (year+1900) + ": " + weekTotal + " Measurment Type: " + measType + " Measument Unit: " + measUnit);
+                                                                    weekTotal = 0;
+                                                                    lastWeek = weekNum;
+                                                                    //newWeek = false;
+                                                                    rowCount++;
+                                                                }
+                                                                
                                                             }
+                                                            //if(replace == true)
+                                                            //System.out.println(replaceName + " for " + replacedName);
+                                                            //else
+                                                            //System.out.println(decelName);
                                                             
-                                                            
-                                                            wb.close();
-                                                            
-                                                            inputStream.close();
-                                                        } catch (FileNotFoundException e) {
-                                                            e.printStackTrace();
-                                                        } catch (IOException e) {
-                                                            e.printStackTrace();
                                                         }
+                                                        //controller.addClient(clients.get(clientNum));
+                                                        //controller.getClients().forEach((names) -> {
+                                                        //System.out.println(names.getName());
+                                                        //});
+                                                        
+                                                        wb.close();
+                                                        
+                                                        inputStream.close();
+                                                    } catch (FileNotFoundException e) {
+                                                        e.printStackTrace();
+                                                    } catch (IOException e) {
+                                                        e.printStackTrace();
                                                     }
-                                                });
-                                                wbo.write(outputStream);
-                                                wbo.close();
-                                                outputStream.close();
-                                                final FXMLLoader loader = new FXMLLoader(getClass().getResource("beacon.fxml"));
-                                                final Stage stage = new Stage(StageStyle.DECORATED);
-                                                stage.setScene(new Scene((Pane) loader.load()));
-                                                stage.showAndWait();
-                                                //getHostServices().showDocument(outputFile.toURI().toURL().toExternalForm());
-                                            } catch (IOException e1) {
-                                                // TODO Auto-generated catch block
-                                                e1.printStackTrace();
-                                            }
+                                                }
+                                                
+                                            });
+                                            wbo.write(outputStream);
+                                            wbo.close();
+                                            outputStream.close();
+                                            final FXMLLoader loader = new FXMLLoader(getClass().getResource("beacon.fxml"));
+                                            final Stage stage = new Stage(StageStyle.DECORATED);
+                                            stage.setScene(new Scene((Pane) loader.load()));
+                                            final BeaconController controller = loader.<BeaconController>getController(); 
+                                            controller.addClients(clients);
+                                            controller.setFields(true);
+                                            stage.showAndWait();
+                                            //getHostServices().showDocument(outputFile.toURI().toURL().toExternalForm());
+                                        } catch (IOException e1) {
+                                            // TODO Auto-generated catch block
+                                            e1.printStackTrace();
+                                        }
                                     }
 				
 			});

@@ -8,30 +8,42 @@ package monthly.organizer;
 /**
  *
  * @author camen
+ * class to keep track of the week year and the values for each behavior possible
  */
 public class WeekYear {
-    
+    //week number
     private final int week;
+    //year
     private final int year;
+    //the array of behavior values, the index represents the behavior from the static array in Client
     public double[] value = new double[Client.behaviors.length];
     
-    
-    public WeekYear(int x, int y, double[] val){
+    //initializing constructor to set all the values, the array is initially all 0's
+    public WeekYear(int x, int y){
         this.week = x;
         this.year = y;  
-        this.value = val;
+        for(int i = 0; i < value.length; i ++)
+            value[i] = 0;
     }
-
+    //returns the week number
     public int getWeek() {
         return this.week;
     }
-
+    //returns the year of this weekYear
     public int getYear() {
         return this.year;
     }
-
-    public void setValue(int[] val) {
-        this.value = val;
+    //sets the value of the behaviors array
+    public void setValue(double val, int beh) {
+        this.value[beh] = val;
+    }
+    //returns the value for the index provided of the behaviors array
+    public double getValue(int i){
+        return this.value[i];
+    }
+    //ruturns the whole behavior array
+    public double[] getWeekValues(){
+        return this.value;
     }
     
 }
